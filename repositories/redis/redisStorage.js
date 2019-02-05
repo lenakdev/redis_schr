@@ -15,8 +15,8 @@ class RedisStorage extends Storage {
         this._sortedSetName = 'prioritizedMessages';
         this._listOfExpiredMsgs = 'toDoMessages';
 
-        this._pollingExpired();
-        this._waitingForExpiredMessage(hook.onExpire);
+        this._pollAndMoveExpiredMessages();
+        this._fireExpiredMessage(hook.onExpire);
     }
 
     schedule(scheduledMessage) {
@@ -30,7 +30,7 @@ class RedisStorage extends Storage {
         return schedule;
     }
 
-    _pollingExpired() {
+    _pollAndMoveExpiredMessages() {
         const self = this;
         let checkList = function(res,rej) {
             let args = [self._sortedSetName, -1, Date.now() + 1, 'LIMIT', 0, 1];
@@ -50,17 +50,16 @@ class RedisStorage extends Storage {
                         });
                 } else {
                     setTimeout(checkList, 1000);
-                    return 0;
                 }
             });
         };
         return new Promise(checkList);
     }
 
-    _waitingForExpiredMessage(onExpire) {
+    _fireExpiredMessage(onExpire) {
         const self = this;
 
-        let blockAndCheckList = function () {
+        let blockAndCheckList = Promise.promisify(function () {
             self._pollingClient.blpop([self._listOfExpiredMsgs, 0], (err, result) => {
                 if (err) {
                     throw err;
@@ -80,7 +79,7 @@ class RedisStorage extends Storage {
                 setImmediate(blockAndCheckList);
             });
         }
-        return new Promise(blockAndCheckList);
+        return Promise.promisify(blockAndCheckList);
     }
 
 }
