@@ -5,6 +5,7 @@ const Hook = require('./hooks/ConsolePrintHook');
 class Scheduler {
     constructor() {
         this.storage = new Storage(new Hook());
+        this.storage.connect();
     }
 
     schedule(time, message) {

@@ -6,14 +6,30 @@ class RedisStorage extends Storage {
 
     constructor(hook) {
         super(hook);
+        this._hook = hook;
+    }
+
+    connect() {
+        if (this._client) {
+            return Promise.resolve();
+        }
 
         this._client = new Redis(6379, '127.0.0.1');
         this._pollingClient = this._client.duplicate();
         this._sortedSetName = 'prioritizedMessages';
         this._listOfExpiredMsgs = 'toDoMessages';
 
-        this._pollAndMoveExpiredMessages();
-        this._fireExpiredMessage(hook.onExpire);
+        let connect = new Promise((res, rej) => {
+            this._client.once('ready', () => {
+                this._pollAndMoveExpiredMessages();
+                this._fireExpiredMessage(this._hook.onExpire);
+            }).once('error', ()=>{
+                console.log("Could not connect to Redis.")
+            });
+        }).then(() => {
+            return Promise.resolve();
+        });
+        return connect;
     }
 
     schedule(scheduledMessage) {
@@ -74,6 +90,10 @@ class RedisStorage extends Storage {
             });
         };
         return new Promise(blockAndCheckList);
+    }
+
+    _onError(e) {
+        console.log('Error: ', e);
     }
 
 }
