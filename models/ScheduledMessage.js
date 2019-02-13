@@ -1,3 +1,5 @@
+const uuidV4 = require('uuid/v4');
+
 module.exports = class ScheduledMessage {
     constructor(id, time, message) {
         this.id = id;
@@ -19,7 +21,7 @@ module.exports = class ScheduledMessage {
 
     static of(time, message) {
         let timeInMillis = new Date(time).getTime();
-        return new ScheduledMessage('id_' + Date.now(), timeInMillis, message);
+        return new ScheduledMessage(uuidV4(), timeInMillis, message);
     }
 
     static fromJSON(json) {
